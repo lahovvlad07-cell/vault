@@ -1,13 +1,42 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import BalanceBadge from "./BalanceBadge";
+import TopBar from "./TopBar";
+import BottomNav, { TabKey } from "./BottomNav";
 import TermsGate from "./TermsGate";
 import CaseCard from "./CaseCard";
 import CaseOpener from "./CaseOpener";
-import type { CaseSummary, OpenCaseResult } from "@/lib/types";
+import HistoryTab from "./HistoryTab";
+import ProfileTab from "./ProfileTab";
+import { hapticImpact } from "@/lib/telegram";
+import type { CaseSummary, HistoryEntry, OpenCaseResult } from "@/lib/types";
+
+const HISTORY_KEY = "vault_history_v1";
+
+function loadHistory(): HistoryEntry[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function CaseCardSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-surface">
+      <div className="skeleton h-24 animate-shimmer" />
+      <div className="space-y-3 p-5">
+        <div className="skeleton h-4 w-1/3 animate-shimmer rounded" />
+        <div className="skeleton h-11 w-full animate-shimmer rounded-xl" />
+      </div>
+    </div>
+  );
+}
 
 export default function VaultApp() {
+  const [tab, setTab] = useState<TabKey>("cases");
   const [balance, setBalance] = useState(0);
   const [acceptedTerms, setAcceptedTerms] = useState<boolean | null>(null);
   const [cases, setCases] = useState<CaseSummary[]>([]);
@@ -16,8 +45,10 @@ export default function VaultApp() {
   const [openError, setOpenError] = useState<string | null>(null);
   const [cooldownReason, setCooldownReason] = useState<string | undefined>();
   const [debugBusy, setDebugBusy] = useState(false);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
 
   useEffect(() => {
+    setHistory(loadHistory());
     (async () => {
       const [sessionRes, casesRes] = await Promise.all([
         fetch("/api/session").then((r) => r.json()),
@@ -29,9 +60,22 @@ export default function VaultApp() {
     })();
   }, []);
 
+  function pushHistory(entry: HistoryEntry) {
+    setHistory((prev) => {
+      const next = [entry, ...prev].slice(0, 50);
+      try {
+        window.localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+      } catch {
+        // localStorage недоступен (приватный режим и т.п.) — не критично для демо.
+      }
+      return next;
+    });
+  }
+
   async function handleOpen(key: string) {
     const def = cases.find((c) => c.key === key);
     if (!def) return;
+    hapticImpact("light");
     setActiveCase(def);
     setOpenResult(null);
     setOpenError(null);
@@ -58,10 +102,21 @@ export default function VaultApp() {
     setOpenResult(data);
     setBalance(data.balance);
     if (key === "free_box") setCooldownReason(undefined);
+
+    const oddsPercent = def.prizes.find((p) => p.label === data.prize.label)?.oddsPercent ?? 50;
+    pushHistory({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      caseTitle: def.title,
+      prizeLabel: data.prize.label,
+      serviceType: data.prize.serviceType,
+      oddsPercent,
+      openedAt: new Date().toISOString(),
+    });
   }
 
   async function handleDebugTopUp() {
     setDebugBusy(true);
+    hapticImpact("light");
     try {
       const res = await fetch("/api/debug-add-points", {
         method: "POST",
@@ -75,50 +130,50 @@ export default function VaultApp() {
     }
   }
 
-  if (acceptedTerms === null) {
-    return <div className="flex min-h-screen items-center justify-center text-muted">Загрузка…</div>;
-  }
+  const isLoading = acceptedTerms === null;
 
   return (
-    <main className="min-h-screen bg-grid">
-      {!acceptedTerms && <TermsGate onAccept={() => setAcceptedTerms(true)} />}
+    <main className="min-h-screen bg-grid pb-24">
+      <TopBar balance={balance} />
 
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-8">
-        <div>
-          <p className="font-mono text-xs uppercase tracking-widest text-muted">демо-прототип</p>
-          <h1 className="font-display text-3xl font-bold text-ink">Vault</h1>
-        </div>
-        <div className="flex items-center gap-3">
-          <BalanceBadge balance={balance} />
-          <button
-            onClick={handleDebugTopUp}
-            disabled={debugBusy}
-            className="focus-ring rounded-full border border-white/10 px-3 py-2 font-mono text-xs text-muted transition hover:text-ink disabled:opacity-50"
-            title="Заглушка вместо платёжного шлюза — только для теста"
-          >
-            {debugBusy ? "…" : "+500 (демо)"}
-          </button>
-        </div>
-      </header>
+      {!isLoading && !acceptedTerms && <TermsGate onAccept={() => setAcceptedTerms(true)} />}
 
-      <section className="mx-auto max-w-5xl px-6 pb-6">
-        <p className="max-w-2xl text-sm leading-relaxed text-muted">
-          Все награды здесь — заглушки. VPN-ссылки и AI-доступ не выдаются по-настоящему,
-          пополнение баланса временно заменено демо-кнопкой вместо платёжного шлюза.
-        </p>
-      </section>
+      <div className="mx-auto max-w-md">
+        {tab === "cases" && (
+          <section className="space-y-4 px-4 pb-6 pt-4">
+            {isLoading ? (
+              <>
+                <CaseCardSkeleton />
+                <CaseCardSkeleton />
+                <CaseCardSkeleton />
+              </>
+            ) : (
+              cases.map((c) => (
+                <CaseCard
+                  key={c.key}
+                  caseDef={c}
+                  balance={balance}
+                  onOpen={handleOpen}
+                  cooldownReason={c.key === "free_box" ? cooldownReason : undefined}
+                />
+              ))
+            )}
+          </section>
+        )}
 
-      <section className="mx-auto grid max-w-5xl grid-cols-1 gap-4 px-6 pb-16 sm:grid-cols-2 lg:grid-cols-3">
-        {cases.map((c) => (
-          <CaseCard
-            key={c.key}
-            caseDef={c}
+        {tab === "history" && !isLoading && <HistoryTab entries={history} />}
+
+        {tab === "profile" && !isLoading && (
+          <ProfileTab
             balance={balance}
-            onOpen={handleOpen}
-            cooldownReason={c.key === "free_box" ? cooldownReason : undefined}
+            acceptedTerms={!!acceptedTerms}
+            debugBusy={debugBusy}
+            onDebugTopUp={handleDebugTopUp}
           />
-        ))}
-      </section>
+        )}
+      </div>
+
+      <BottomNav active={tab} onChange={setTab} />
 
       {activeCase && (
         <CaseOpener

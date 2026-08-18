@@ -6,19 +6,54 @@
   scrollbar-color: #33304a #15131f;
 }
 
+html,
+body {
+  overscroll-behavior-y: none;
+  background: #0a0b12;
+}
+
 .bg-grid {
-  background-image:
-    radial-gradient(circle at 1px 1px, rgba(237,234,246,0.06) 1px, transparent 0);
+  background-image: radial-gradient(circle at 1px 1px, rgba(237, 234, 246, 0.06) 1px, transparent 0);
   background-size: 28px 28px;
 }
 
+.pb-safe {
+  padding-bottom: max(0.85rem, env(safe-area-inset-bottom));
+}
+
+.pt-safe {
+  padding-top: max(0.6rem, env(safe-area-inset-top));
+}
+
 .focus-ring:focus-visible {
-  outline: 2px solid #8C6FFF;
+  outline: 2px solid #8c6fff;
   outline-offset: 3px;
 }
 
+.skeleton {
+  background: linear-gradient(90deg, #14151f 25%, #1f2233 37%, #14151f 63%);
+  background-size: 200% 100%;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.tap-scale {
+  transition: transform 0.12s ease;
+}
+.tap-scale:active {
+  transform: scale(0.97);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;

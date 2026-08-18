@@ -1,5 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Space_Grotesk, Inter, IBM_Plex_Mono } from "next/font/google";
+import TelegramReady from "@/components/TelegramReady";
 import "./globals.css";
 
 const display = Space_Grotesk({
@@ -25,10 +27,22 @@ export const metadata: Metadata = {
   description: "Демонстрационный прототип механики кейсов (не для реального использования)",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+  themeColor: "#0A0B12",
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ru" className={`${display.variable} ${body.variable} ${mono.variable}`}>
-      <body className="bg-bg text-ink font-body antialiased">{children}</body>
+      <body className="bg-bg text-ink font-body antialiased">
+        <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
+        <TelegramReady />
+        {children}
+      </body>
     </html>
   );
 }

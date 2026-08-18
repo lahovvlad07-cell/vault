@@ -24,3 +24,12 @@ export interface OpenCaseResult {
   mock: { note: string; vlessLink?: string } | null;
   balance: number;
 }
+
+export interface HistoryEntry {
+  id: string;
+  caseTitle: string;
+  prizeLabel: string;
+  serviceType: ServiceType;
+  oddsPercent: number;
+  openedAt: string;
+}
