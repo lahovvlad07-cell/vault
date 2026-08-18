@@ -5,6 +5,7 @@ import TopBar from "./TopBar";
 import BottomNav, { TabKey } from "./BottomNav";
 import TermsGate from "./TermsGate";
 import CaseCard from "./CaseCard";
+import CaseSectionHeader, { CATEGORY_ORDER } from "./CaseSectionHeader";
 import CaseFilters, { SortKey } from "./CaseFilters";
 import CaseOpener from "./CaseOpener";
 import HistoryTab from "./HistoryTab";
@@ -156,12 +157,16 @@ export default function VaultApp() {
   const isLoading = acceptedTerms === null;
   const pendingInventoryCount = inventory.filter((i) => !i.activated).length;
 
-  const visibleCases = useMemo(() => {
-    let list = cases;
-    if (categoryFilter !== "all") list = list.filter((c) => c.category === categoryFilter);
-    if (sort === "price_asc") list = [...list].sort((a, b) => a.price - b.price);
-    if (sort === "price_desc") list = [...list].sort((a, b) => b.price - a.price);
-    return list;
+  const sections = useMemo(() => {
+    const cats = categoryFilter === "all" ? CATEGORY_ORDER : [categoryFilter];
+    return cats
+      .map((cat) => {
+        let list = cases.filter((c) => c.category === cat);
+        if (sort === "price_asc") list = [...list].sort((a, b) => a.price - b.price);
+        if (sort === "price_desc") list = [...list].sort((a, b) => b.price - a.price);
+        return { category: cat, list };
+      })
+      .filter((s) => s.list.length > 0);
   }, [cases, categoryFilter, sort]);
 
   return (
@@ -187,17 +192,24 @@ export default function VaultApp() {
                   sort={sort}
                   onSortChange={setSort}
                 />
-                {visibleCases.length === 0 ? (
+                {sections.length === 0 ? (
                   <p className="py-10 text-center text-sm text-muted">В этой категории пока нет кейсов.</p>
                 ) : (
-                  visibleCases.map((c) => (
-                    <CaseCard
-                      key={c.key}
-                      caseDef={c}
-                      balance={balance}
-                      onOpen={handleOpen}
-                      cooldownReason={c.key === "free_box" ? cooldownReason : undefined}
-                    />
+                  sections.map(({ category, list }) => (
+                    <div key={category} className="space-y-2.5">
+                      <CaseSectionHeader category={category} count={list.length} />
+                      <div className="grid grid-cols-2 gap-3">
+                        {list.map((c) => (
+                          <CaseCard
+                            key={c.key}
+                            caseDef={c}
+                            balance={balance}
+                            onOpen={handleOpen}
+                            cooldownReason={c.key === "free_box" ? cooldownReason : undefined}
+                          />
+                        ))}
+                      </div>
+                    </div>
                   ))
                 )}
               </>
