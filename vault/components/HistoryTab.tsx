@@ -20,7 +20,7 @@ export default function HistoryTab({ entries }: { entries: HistoryEntry[] }) {
   }
 
   return (
-    <ul className="space-y-2 px-4 pb-6 pt-2">
+    <ul className="grid grid-cols-1 gap-2 px-4 pb-6 pt-2 sm:grid-cols-2 sm:gap-3 sm:px-6 lg:grid-cols-3">
       {entries.map((e) => {
         const tier = getRarityTier(e.oddsPercent);
         const c = RARITY_CLASS[tier];

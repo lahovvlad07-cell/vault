@@ -54,13 +54,13 @@ export default function InventoryTab({
   const activated = items.filter((i) => i.activated);
 
   return (
-    <div className="space-y-5 px-4 pb-6 pt-2">
+    <div className="space-y-5 px-4 pb-6 pt-2 sm:px-6">
       {pending.length > 0 && (
         <div>
           <p className="mb-2 px-1 font-mono text-[10px] uppercase tracking-widest text-muted">
             Ждут активации · {pending.length}
           </p>
-          <ul className="space-y-2">
+          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
             {pending.map((item) => (
               <li
                 key={item.id}
@@ -96,7 +96,7 @@ export default function InventoryTab({
           <p className="mb-2 px-1 font-mono text-[10px] uppercase tracking-widest text-muted">
             Активировано · {activated.length}
           </p>
-          <ul className="space-y-2">
+          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
             {activated.map((item) => {
               const isOpen = expandedId === item.id;
               return (

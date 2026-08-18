@@ -14,7 +14,7 @@ export default function ProfileTab({
   onDebugTopUp: () => void;
 }) {
   return (
-    <div className="space-y-4 px-4 pb-6 pt-4">
+    <div className="mx-auto max-w-md space-y-4 px-4 pb-6 pt-4 sm:px-6">
       <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-surface p-5">
         <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface2 text-violet">
           <CircleUserRound className="h-6 w-6" strokeWidth={1.5} />

@@ -22,7 +22,7 @@ export default function BottomNav({
 }) {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-white/5 bg-bg/90 pb-safe backdrop-blur-md">
-      <div className="mx-auto flex max-w-md items-stretch justify-around px-2 pt-1.5">
+      <div className="mx-auto flex w-full max-w-md items-stretch justify-around px-2 pt-1.5 sm:max-w-md sm:justify-center sm:gap-6">
         {TABS.map(({ key, label, icon: Icon }) => {
           const isActive = active === key;
           const badge = key === "inventory" ? inventoryBadge : undefined;

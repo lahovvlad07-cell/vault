@@ -175,9 +175,9 @@ export default function VaultApp() {
 
       {!isLoading && !acceptedTerms && <TermsGate onAccept={() => setAcceptedTerms(true)} />}
 
-      <div className="mx-auto max-w-md">
+      <div className="mx-auto w-full max-w-md sm:max-w-3xl sm:px-2 lg:max-w-6xl">
         {tab === "cases" && (
-          <section className="space-y-4 px-4 pb-6 pt-4">
+          <section className="space-y-5 px-4 pb-6 pt-4 sm:space-y-6 sm:px-6 sm:pt-6">
             {isLoading ? (
               <>
                 <CaseCardSkeleton />
@@ -198,7 +198,7 @@ export default function VaultApp() {
                   sections.map(({ category, list }) => (
                     <div key={category} className="space-y-2.5">
                       <CaseSectionHeader category={category} count={list.length} />
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
                         {list.map((c) => (
                           <CaseCard
                             key={c.key}

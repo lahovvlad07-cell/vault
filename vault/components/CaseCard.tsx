@@ -42,23 +42,23 @@ export default function CaseCard({
 
   return (
     <div className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-surface shadow-card transition hover:border-white/20">
-      <div className={`relative flex flex-col items-center gap-2 bg-gradient-to-br ${lid} px-3 pb-3 pt-4 text-center`}>
+      <div className={`relative flex flex-col items-center gap-2 bg-gradient-to-br ${lid} px-3 pb-3 pt-4 text-center sm:gap-2.5 sm:px-4 sm:pb-4 sm:pt-5`}>
         <span
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border sm:h-12 sm:w-12 ${
             isFree ? "border-gold/40 bg-gold/10 text-gold" : "border-violet/30 bg-violet/10 text-violet"
           }`}
         >
-          <CaseIcon isFree={isFree} className="h-5 w-5" />
+          <CaseIcon isFree={isFree} className="h-5 w-5 sm:h-6 sm:w-6" />
         </span>
         <div>
-          <h3 className="font-display text-sm font-bold leading-tight text-ink">{caseDef.title}</h3>
-          <p className="mt-0.5 line-clamp-1 text-[10px] leading-tight text-muted">{caseDef.tagline}</p>
+          <h3 className="font-display text-sm font-bold leading-tight text-ink sm:text-base">{caseDef.title}</h3>
+          <p className="mt-0.5 line-clamp-1 text-[10px] leading-tight text-muted sm:text-xs">{caseDef.tagline}</p>
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col px-3 pb-3 pt-2.5">
+      <div className="flex flex-1 flex-col px-3 pb-3 pt-2.5 sm:px-4 sm:pb-4 sm:pt-3">
         <div className="flex items-center justify-between gap-1">
-          <p className="font-mono text-xs font-medium text-ink">
+          <p className="font-mono text-xs font-medium text-ink sm:text-sm">
             {isFree ? (
               <span className="text-gold">Бесплатно</span>
             ) : (
@@ -69,20 +69,20 @@ export default function CaseCard({
           </p>
           <button
             onClick={() => setExpanded((v) => !v)}
-            className="focus-ring flex items-center gap-0.5 text-[10px] text-muted transition hover:text-ink"
+            className="focus-ring flex items-center gap-0.5 text-[10px] text-muted transition hover:text-ink sm:text-xs"
           >
             шансы
-            <ChevronDown className={`h-3 w-3 transition-transform ${expanded ? "rotate-180" : ""}`} />
+            <ChevronDown className={`h-3 w-3 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`} />
           </button>
         </div>
 
         {expanded && (
-          <ul className="mt-2 space-y-1.5 border-t border-white/5 pt-2">
+          <ul className="mt-2 space-y-1.5 border-t border-white/5 pt-2 sm:space-y-2 sm:pt-2.5">
             {caseDef.prizes.map((p) => {
               const tier = getRarityTier(p.oddsPercent);
               const c = RARITY_CLASS[tier];
               return (
-                <li key={p.label} className="flex items-start justify-between gap-1.5 text-[10px] leading-snug">
+                <li key={p.label} className="flex items-start justify-between gap-1.5 text-[10px] leading-snug sm:text-[11px]">
                   <span className="flex items-start gap-1.5 text-ink/90">
                     <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded ${c.bg} ${c.text}`}>
                       <PrizeIcon type={p.serviceType} className="h-2.5 w-2.5" />
@@ -102,7 +102,7 @@ export default function CaseCard({
         <button
           onClick={() => onOpen(caseDef.key)}
           disabled={locked}
-          className="focus-ring tap-scale mt-3 w-full rounded-lg bg-violet px-2 py-2.5 text-xs font-medium leading-tight text-ink transition hover:brightness-110 disabled:cursor-not-allowed disabled:bg-surface2 disabled:text-muted"
+          className="focus-ring tap-scale mt-3 w-full rounded-lg bg-violet px-2 py-2.5 text-xs font-medium leading-tight text-ink transition hover:brightness-110 disabled:cursor-not-allowed disabled:bg-surface2 disabled:text-muted sm:py-3 sm:text-sm"
         >
           {!canAfford ? "Мало поинтов" : cooldownReason ? "Скоро доступен" : "Открыть"}
         </button>
