@@ -7,7 +7,10 @@ import { getRarityTier, RARITY_CLASS, RARITY_COLOR, RARITY_LABEL } from "@/lib/r
 import { hapticImpact, hapticNotification } from "@/lib/telegram";
 import PrizeIcon from "./PrizeIcon";
 
-const ITEM_WIDTH = 112; // px, includes gap
+const ITEM_BOX = 112; // px — ширина карточки (w-28)
+const ITEM_GAP = 8; // px — gap-2 между карточками
+const TRACK_PADDING = 8; // px — p-2 на треке (сдвигает первую карточку)
+const ITEM_PITCH = ITEM_BOX + ITEM_GAP; // px — фактическое расстояние между началами соседних карточек
 const LANDING_INDEX = 26;
 const STRIP_LENGTH = 32;
 const SPIN_DURATION_MS = 5200; // помедленнее — меньше «мыла» на быстрых кадрах
@@ -91,7 +94,10 @@ export default function CaseOpener({
   useEffect(() => {
     if (!result || !trackRef.current) return;
     const containerWidth = trackRef.current.parentElement?.clientWidth ?? 480;
-    const target = LANDING_INDEX * ITEM_WIDTH + ITEM_WIDTH / 2 - containerWidth / 2;
+    // Центр карточки LANDING_INDEX относительно начала трека:
+    // левый паддинг трека + i полных "шагов" (карточка+гэп) + половина ширины карточки.
+    const landingCenter = TRACK_PADDING + LANDING_INDEX * ITEM_PITCH + ITEM_BOX / 2;
+    const target = landingCenter - containerWidth / 2;
     setOffset(0);
     setSettled(false);
     setSkipped(false);
