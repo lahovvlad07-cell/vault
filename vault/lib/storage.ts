@@ -1,12 +1,6 @@
 /**
  * storage.ts — работа с Redis. Ключи используют абстрактный userId (сейчас —
  * анонимный session id из cookie; при переносе на Telegram — telegram_id).
- *
- * ВНИМАНИЕ (ограничение прототипа): spendPoints() ниже делает GET, потом
- * HINCRBY — это не атомарная операция и в теории уязвима к гонкам при
- * параллельных запросах одного пользователя (например, если открыть один
- * и тот же кейс из двух вкладок одновременно). Для продакшна замените на
- * Redis Lua-скрипт (EVAL) с проверкой-и-списанием одной командой.
  */
 
 import { redis } from "./redis";
@@ -41,11 +35,24 @@ export async function addPoints(userId: string, amount: number) {
   await redis.hincrby(`user:${userId}`, "balance", amount);
 }
 
+// Атомарная проверка-и-списание одной Lua-командой (EVAL) — так баланс
+// нельзя потратить дважды параллельными запросами (например, из двух вкладок
+// одновременно). Раньше здесь были раздельные GET + HINCRBY, что оставляло
+// окно гонки между чтением и записью.
+const SPEND_POINTS_SCRIPT = `
+local key = KEYS[1]
+local amount = tonumber(ARGV[1])
+local balance = tonumber(redis.call('HGET', key, 'balance') or '0')
+if balance < amount then
+  return 0
+end
+redis.call('HINCRBY', key, 'balance', -amount)
+return 1
+`;
+
 export async function spendPoints(userId: string, amount: number): Promise<boolean> {
-  const balance = await getBalance(userId);
-  if (balance < amount) return false;
-  await redis.hincrby(`user:${userId}`, "balance", -amount);
-  return true;
+  const ok = await redis.eval(SPEND_POINTS_SCRIPT, [`user:${userId}`], [amount]);
+  return Number(ok) === 1;
 }
 
 export async function canOpenFreeCase(userId: string): Promise<{ ok: boolean; reason: string }> {
@@ -63,15 +70,43 @@ export async function markFreeCaseOpened(userId: string) {
   await redis.set(`freecase:${userId}:last_opened`, new Date().toISOString());
 }
 
-export async function logCaseOpen(
-  userId: string,
-  caseKey: string,
-  prizeLabel: string,
-  promocode: string | null
-) {
-  const entry = `${new Date().toISOString()}|${userId}|${caseKey}|${prizeLabel}|${promocode ?? ""}`;
-  await redis.lpush("case_open_log", entry);
-  await redis.ltrim("case_open_log", 0, 499);
+/**
+ * История открытий — персональная, хранится как capped Redis-list (LPUSH +
+ * LTRIM), а не в localStorage браузера. Так она:
+ *  - не растёт бесконечно (жёсткий предел HISTORY_LIMIT записей на юзера);
+ *  - переживает очистку кэша/смену устройства в рамках одной сессии;
+ *  - не может "потеряться" рассинхронизировавшись с сервером.
+ */
+export interface HistoryRecord {
+  id: string;
+  caseKey: string;
+  caseTitle: string;
+  prizeLabel: string;
+  serviceType: "vpn" | "ai" | "points";
+  oddsPercent: number;
+  openedAt: string;
+}
+
+export const HISTORY_LIMIT = 40;
+
+function parseHistoryValue(raw: unknown): HistoryRecord {
+  return typeof raw === "string" ? JSON.parse(raw) : (raw as HistoryRecord);
+}
+
+export async function addHistoryEntry(userId: string, entry: HistoryRecord) {
+  const key = `history:${userId}`;
+  await redis.lpush(key, JSON.stringify(entry));
+  await redis.ltrim(key, 0, HISTORY_LIMIT - 1);
+}
+
+export async function listHistory(userId: string): Promise<HistoryRecord[]> {
+  const raw = await redis.lrange<unknown>(`history:${userId}`, 0, HISTORY_LIMIT - 1);
+  if (!raw) return [];
+  return raw.map(parseHistoryValue);
+}
+
+export async function clearHistory(userId: string) {
+  await redis.del(`history:${userId}`);
 }
 
 /**

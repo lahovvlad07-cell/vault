@@ -1,10 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown, Clock } from "lucide-react";
+import { Percent, Clock } from "lucide-react";
 import type { CaseSummary } from "@/lib/types";
-import { getRarityTier, RARITY_CLASS, RARITY_LABEL } from "@/lib/rarity";
-import PrizeIcon, { CaseIcon } from "./PrizeIcon";
+import { CaseIcon } from "./PrizeIcon";
 
 const LID_GRADIENT: Record<string, string> = {
   vpn_mini: "from-violet/15 via-violet/5 to-transparent",
@@ -27,18 +25,20 @@ export default function CaseCard({
   disabled,
   cooldownReason,
   onOpen,
+  onShowOdds,
 }: {
   caseDef: CaseSummary;
   balance: number;
   disabled?: boolean;
   cooldownReason?: string;
   onOpen: (key: string) => void;
+  onShowOdds: (caseDef: CaseSummary) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
   const isFree = caseDef.key === "free_box";
   const canAfford = isFree || balance >= caseDef.price;
   const locked = disabled || !canAfford || (isFree && !!cooldownReason);
   const lid = LID_GRADIENT[caseDef.key] ?? "from-violet/20 via-violet/5 to-transparent";
+  const topOdds = Math.max(...caseDef.prizes.map((p) => p.oddsPercent));
 
   return (
     <div className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-surface shadow-card transition hover:border-white/20">
@@ -68,36 +68,17 @@ export default function CaseCard({
             )}
           </p>
           <button
-            onClick={() => setExpanded((v) => !v)}
-            className="focus-ring flex items-center gap-0.5 text-[10px] text-muted transition hover:text-ink sm:text-xs"
+            onClick={() => onShowOdds(caseDef)}
+            className="focus-ring tap-scale flex items-center gap-1 rounded-full border border-white/10 bg-surface2 px-2 py-1 text-[10px] text-muted transition hover:border-white/20 hover:text-ink sm:text-xs"
           >
+            <Percent className="h-3 w-3 shrink-0" />
             шансы
-            <ChevronDown className={`h-3 w-3 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`} />
           </button>
         </div>
 
-        {expanded && (
-          <ul className="mt-2 space-y-1.5 border-t border-white/5 pt-2 sm:space-y-2 sm:pt-2.5">
-            {caseDef.prizes.map((p) => {
-              const tier = getRarityTier(p.oddsPercent);
-              const c = RARITY_CLASS[tier];
-              return (
-                <li key={p.label} className="flex items-start justify-between gap-1.5 text-[10px] leading-snug sm:text-[11px]">
-                  <span className="flex items-start gap-1.5 text-ink/90">
-                    <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded ${c.bg} ${c.text}`}>
-                      <PrizeIcon type={p.serviceType} className="h-2.5 w-2.5" />
-                    </span>
-                    <span>
-                      {p.label}
-                      <span className={`ml-1 ${c.text}`}>· {RARITY_LABEL[tier]}</span>
-                    </span>
-                  </span>
-                  <span className="shrink-0 font-mono text-ink/70">{p.oddsPercent}%</span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        <p className="mt-2 text-[10px] leading-tight text-muted sm:text-[11px]">
+          Топ-шанс: <span className="text-ink/80">{topOdds}%</span>
+        </p>
 
         <button
           onClick={() => onOpen(caseDef.key)}

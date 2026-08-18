@@ -8,23 +8,14 @@ import CaseCard from "./CaseCard";
 import CaseSectionHeader, { CATEGORY_ORDER } from "./CaseSectionHeader";
 import CaseFilters, { SortKey } from "./CaseFilters";
 import CaseOpener from "./CaseOpener";
+import OddsSheet from "./OddsSheet";
 import HistoryTab from "./HistoryTab";
 import InventoryTab from "./InventoryTab";
 import ProfileTab from "./ProfileTab";
 import { hapticImpact } from "@/lib/telegram";
 import type { CaseCategory, CaseSummary, HistoryEntry, InventoryItem, OpenCaseResult } from "@/lib/types";
 
-const HISTORY_KEY = "vault_history_v1";
-
-function loadHistory(): HistoryEntry[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(HISTORY_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
+const HISTORY_LIMIT = 40;
 
 function CaseCardSkeleton() {
   return (
@@ -49,13 +40,14 @@ export default function VaultApp() {
   const [cooldownReason, setCooldownReason] = useState<string | undefined>();
   const [debugBusy, setDebugBusy] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [inventoryLoaded, setInventoryLoaded] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<CaseCategory | "all">("all");
   const [sort, setSort] = useState<SortKey>("default");
+  const [oddsCase, setOddsCase] = useState<CaseSummary | null>(null);
 
   useEffect(() => {
-    setHistory(loadHistory());
     (async () => {
       const [sessionRes, casesRes] = await Promise.all([
         fetch("/api/session").then((r) => r.json()),
@@ -71,24 +63,31 @@ export default function VaultApp() {
     const res = await fetch("/api/inventory");
     if (!res.ok) return;
     const data = await res.json();
+    // Полная замена состояния данными сервера: если предмета больше нет в
+    // ответе — значит на сервере (источнике правды) его и не было/нет,
+    // и в UI он не должен "призрачно" оставаться.
     setInventory(data.items ?? []);
     setInventoryLoaded(true);
   }
 
+  async function refreshHistory() {
+    const res = await fetch("/api/history");
+    if (!res.ok) return;
+    const data = await res.json();
+    setHistory(data.entries ?? []);
+    setHistoryLoaded(true);
+  }
+
   useEffect(() => {
-    if (acceptedTerms) refreshInventory();
+    if (acceptedTerms) {
+      refreshInventory();
+      refreshHistory();
+    }
   }, [acceptedTerms]);
 
-  function pushHistory(entry: HistoryEntry) {
-    setHistory((prev) => {
-      const next = [entry, ...prev].slice(0, 50);
-      try {
-        window.localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
-      } catch {
-        // localStorage недоступен (приватный режим и т.п.) — не критично для демо.
-      }
-      return next;
-    });
+  async function handleClearHistory() {
+    setHistory([]);
+    await fetch("/api/history", { method: "DELETE" });
   }
 
   async function handleOpen(key: string) {
@@ -123,15 +122,9 @@ export default function VaultApp() {
     if (key === "free_box") setCooldownReason(undefined);
     if (data.pendingActivation) refreshInventory();
 
-    const oddsPercent = def.prizes.find((p) => p.label === data.prize.label)?.oddsPercent ?? 50;
-    pushHistory({
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      caseTitle: def.title,
-      prizeLabel: data.prize.label,
-      serviceType: data.prize.serviceType,
-      oddsPercent,
-      openedAt: new Date().toISOString(),
-    });
+    if (data.historyEntry) {
+      setHistory((prev) => [data.historyEntry as HistoryEntry, ...prev].slice(0, HISTORY_LIMIT));
+    }
   }
 
   function handleInventoryActivated(item: InventoryItem) {
@@ -205,6 +198,7 @@ export default function VaultApp() {
                             caseDef={c}
                             balance={balance}
                             onOpen={handleOpen}
+                            onShowOdds={setOddsCase}
                             cooldownReason={c.key === "free_box" ? cooldownReason : undefined}
                           />
                         ))}
@@ -218,10 +212,12 @@ export default function VaultApp() {
         )}
 
         {tab === "inventory" && !isLoading && (
-          <InventoryTab items={inventory} onActivated={handleInventoryActivated} />
+          <InventoryTab items={inventory} loading={!inventoryLoaded} onActivated={handleInventoryActivated} />
         )}
 
-        {tab === "history" && !isLoading && <HistoryTab entries={history} />}
+        {tab === "history" && !isLoading && (
+          <HistoryTab entries={history} loading={!historyLoaded} onClear={handleClearHistory} />
+        )}
 
         {tab === "profile" && !isLoading && (
           <ProfileTab
@@ -248,6 +244,8 @@ export default function VaultApp() {
           }}
         />
       )}
+
+      {oddsCase && <OddsSheet caseDef={oddsCase} onClose={() => setOddsCase(null)} />}
     </main>
   );
 }

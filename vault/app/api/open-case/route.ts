@@ -8,11 +8,11 @@ import {
   addPoints,
   canOpenFreeCase,
   markFreeCaseOpened,
-  logCaseOpen,
+  addHistoryEntry,
   getBalance,
   addInventoryItem,
 } from "@/lib/storage";
-import { getCase, rollCase } from "@/lib/cases";
+import { getCase, rollCase, getPrizeOddsPercent } from "@/lib/cases";
 
 export async function POST(req: NextRequest) {
   const userId = readSessionId(req);
@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
   }
 
   const prize = rollCase(def.key);
+  const oddsPercent = getPrizeOddsPercent(def, prize);
   let pendingActivation = false;
   let inventoryItemId: string | null = null;
 
@@ -75,7 +76,16 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  await logCaseOpen(userId, def.key, prize.label, null);
+  const historyEntry = {
+    id: randomUUID(),
+    caseKey: def.key,
+    caseTitle: def.title,
+    prizeLabel: prize.label,
+    serviceType: prize.serviceType,
+    oddsPercent,
+    openedAt: new Date().toISOString(),
+  };
+  await addHistoryEntry(userId, historyEntry);
   const balance = await getBalance(userId);
 
   return withCookie(
@@ -88,6 +98,7 @@ export async function POST(req: NextRequest) {
       balance,
       pendingActivation,
       inventoryItemId,
+      historyEntry,
     })
   );
 }

@@ -27,10 +27,12 @@ export interface OpenCaseResult {
   /** true — приз лёг в инвентарь и ждёт активации (VPN/AI); false — начислен сразу (поинты) */
   pendingActivation: boolean;
   inventoryItemId: string | null;
+  historyEntry: HistoryEntry;
 }
 
 export interface HistoryEntry {
   id: string;
+  caseKey?: string;
   caseTitle: string;
   prizeLabel: string;
   serviceType: ServiceType;

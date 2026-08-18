@@ -1,11 +1,37 @@
 "use client";
 
-import { History as HistoryIcon } from "lucide-react";
+import { useState } from "react";
+import { History as HistoryIcon, Trash2 } from "lucide-react";
 import type { HistoryEntry } from "@/lib/types";
 import { getRarityTier, RARITY_CLASS, RARITY_LABEL } from "@/lib/rarity";
+import { dayBucketLabel, formatRelativeTime } from "@/lib/format";
 import PrizeIcon from "./PrizeIcon";
 
-export default function HistoryTab({ entries }: { entries: HistoryEntry[] }) {
+const HISTORY_LIMIT = 40;
+
+function HistorySkeleton() {
+  return (
+    <div className="space-y-2 px-4 pb-6 pt-2 sm:px-6">
+      {Array.from({ length: 5 }, (_, i) => (
+        <div key={i} className="skeleton h-16 animate-shimmer rounded-xl" />
+      ))}
+    </div>
+  );
+}
+
+export default function HistoryTab({
+  entries,
+  loading,
+  onClear,
+}: {
+  entries: HistoryEntry[];
+  loading: boolean;
+  onClear: () => void;
+}) {
+  const [confirmClear, setConfirmClear] = useState(false);
+
+  if (loading) return <HistorySkeleton />;
+
   if (entries.length === 0) {
     return (
       <div className="flex flex-col items-center gap-3 px-6 py-20 text-center">
@@ -19,38 +45,84 @@ export default function HistoryTab({ entries }: { entries: HistoryEntry[] }) {
     );
   }
 
+  const groups: { label: string; items: HistoryEntry[] }[] = [];
+  for (const e of entries) {
+    const label = dayBucketLabel(e.openedAt);
+    const last = groups[groups.length - 1];
+    if (last && last.label === label) last.items.push(e);
+    else groups.push({ label, items: [e] });
+  }
+
   return (
-    <ul className="grid grid-cols-1 gap-2 px-4 pb-6 pt-2 sm:grid-cols-2 sm:gap-3 sm:px-6 lg:grid-cols-3">
-      {entries.map((e) => {
-        const tier = getRarityTier(e.oddsPercent);
-        const c = RARITY_CLASS[tier];
-        return (
-          <li
-            key={e.id}
-            className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-surface px-4 py-3"
+    <div className="px-4 pb-6 pt-2 sm:px-6">
+      <div className="mb-3 flex items-center justify-between px-0.5">
+        <p className="font-mono text-[10px] uppercase tracking-widest text-muted">
+          Последние {entries.length}
+          {entries.length >= HISTORY_LIMIT ? ` (хранятся не больше ${HISTORY_LIMIT})` : ""}
+        </p>
+        {confirmClear ? (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-muted">Очистить всё?</span>
+            <button
+              onClick={() => {
+                onClear();
+                setConfirmClear(false);
+              }}
+              className="focus-ring tap-scale rounded-full bg-danger/15 px-2.5 py-1 text-[11px] font-medium text-danger"
+            >
+              Да
+            </button>
+            <button
+              onClick={() => setConfirmClear(false)}
+              className="focus-ring tap-scale rounded-full bg-surface2 px-2.5 py-1 text-[11px] text-muted"
+            >
+              Нет
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmClear(true)}
+            className="focus-ring tap-scale flex items-center gap-1 text-[11px] text-muted transition hover:text-danger"
           >
-            <div className="flex items-center gap-3">
-              <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${c.bg} ${c.text}`}>
-                <PrizeIcon type={e.serviceType} className="h-4 w-4" />
-              </span>
-              <div>
-                <p className="text-sm text-ink">{e.prizeLabel}</p>
-                <p className="text-xs text-muted">
-                  {e.caseTitle} · <span className={c.text}>{RARITY_LABEL[tier]}</span>
-                </p>
-              </div>
-            </div>
-            <span className="whitespace-nowrap font-mono text-[11px] text-muted">
-              {new Date(e.openedAt).toLocaleString("ru-RU", {
-                day: "2-digit",
-                month: "2-digit",
-                hour: "2-digit",
-                minute: "2-digit",
+            <Trash2 className="h-3 w-3" /> Очистить
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-4">
+        {groups.map((group) => (
+          <div key={group.label}>
+            <p className="mb-1.5 px-0.5 text-[11px] font-medium text-muted">{group.label}</p>
+            <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {group.items.map((e) => {
+                const tier = getRarityTier(e.oddsPercent);
+                const c = RARITY_CLASS[tier];
+                return (
+                  <li
+                    key={e.id}
+                    className={`flex items-center justify-between gap-3 rounded-xl border-l-2 border bg-surface px-4 py-3 ${c.border}`}
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${c.bg} ${c.text}`}>
+                        <PrizeIcon type={e.serviceType} className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm text-ink">{e.prizeLabel}</p>
+                        <p className="truncate text-xs text-muted">
+                          {e.caseTitle} · <span className={c.text}>{RARITY_LABEL[tier]}</span>
+                        </p>
+                      </div>
+                    </div>
+                    <span className="shrink-0 whitespace-nowrap font-mono text-[11px] text-muted">
+                      {formatRelativeTime(e.openedAt)}
+                    </span>
+                  </li>
+                );
               })}
-            </span>
-          </li>
-        );
-      })}
-    </ul>
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

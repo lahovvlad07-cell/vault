@@ -205,6 +205,12 @@ export function getCase(key: string): CaseDef | undefined {
   return CASES.find((c) => c.key === key);
 }
 
+/** Процент шанса приза внутри кейса, той же формулой, что и в /api/cases. */
+export function getPrizeOddsPercent(def: CaseDef, prize: Prize): number {
+  const total = def.prizes.reduce((s, p) => s + p.weight, 0);
+  return Math.round((prize.weight / total) * 1000) / 10;
+}
+
 export function rollCase(caseKey: string): Prize {
   const def = getCase(caseKey);
   if (!def) throw new Error("unknown_case");
